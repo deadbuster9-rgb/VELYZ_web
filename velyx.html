@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VELYX — Advanced Discord Protection Bot</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #07060f;
+    --bg2: #0d0b1a;
+    --bg3: #120f24;
+    --violet: #7c3aed;
+    --violet-bright: #8b5cf6;
+    --violet-glow: #a78bfa;
+    --violet-dim: #4c1d95;
+    --accent: #c084fc;
+    --accent2: #e879f9;
+    --text: #f0eaff;
+    --text-muted: #9b8fc4;
+    --border: rgba(124, 58, 237, 0.25);
+    --glow: 0 0 40px rgba(139, 92, 246, 0.35);
+    --glow-sm: 0 0 15px rgba(139, 92, 246, 0.4);
+    --glass-bg: rgba(18, 12, 40, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shine: rgba(255, 255, 255, 0.04);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    overflow-x: hidden;
+    line-height: 1.6;
+    cursor: none;
+  }
+
+  /* ── CUSTOM CURSOR ── */
+  #cursor-dot {
+    position: fixed;
+    top: 0; left: 0;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 10px #fff, 0 0 20px rgba(167,139,250,0.8);
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: width 0.15s, height 0.15s, background 0.15s;
+  }
+
+  #cursor-ring {
+    position: fixed;
+    top: 0; left: 0;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: width 0.35s cubic-bezier(0.25,1,0.5,1),
+                height 0.35s cubic-bezier(0.25,1,0.5,1),
+                border-color 0.3s, background 0.3s;
+    backdrop-filter: blur(1px);
+  }
+
+  #cursor-glow {
+    position: fixed;
+    top: 0; left: 0;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(167,139,250,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 9997;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s;
+  }
+
+  body.cursor-hover #cursor-dot {
+    width: 14px; height: 14px;
+    background: var(--accent2);
+    box-shadow: 0 0 14px var(--accent2), 0 0 30px rgba(232,121,249,0.6);
+  }
+  body.cursor-hover #cursor-ring {
+    width: 56px; height: 56px;
+    border-color: rgba(232,121,249,0.6);
+    background: rgba(232,121,249,0.05);
+  }
+
+  a, button, .feature-card, .step-card, .command-item, .btn-primary, .btn-secondary, .nav-cta {
+    cursor: none;
+  }
+
+  /* ── CANVAS BACKGROUND ── */
+  #bg-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.55;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.025;
+    pointer-events: none;
+  }
+
+  /* ── LAYOUT ── */
+  section, nav, footer { position: relative; z-index: 2; }
+
+  .container {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 1.2rem 0;
+    background: rgba(10, 7, 22, 0.55);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.3);
+    transition: background 0.3s;
+  }
+
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .nav-logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.5rem;
+    letter-spacing: 0.12em;
+    background: linear-gradient(135deg, var(--violet-glow), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--accent); }
+
+  .nav-cta {
+    background: linear-gradient(135deg, var(--violet), var(--accent2));
+    color: #fff !important;
+    padding: 0.55rem 1.4rem;
+    border-radius: 8px;
+    font-weight: 600 !important;
+    transition: opacity 0.2s, transform 0.2s !important;
+    box-shadow: var(--glow-sm);
+  }
+
+  .nav-cta:hover { opacity: 0.88; transform: translateY(-1px); color: #fff !important; }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 120px 0 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-glow {
+    position: absolute;
+    width: 700px; height: 700px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: pulse-glow 5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+    50%       { opacity: 1;   transform: translate(-50%, -50%) scale(1.08); }
+  }
+
+  .hero-content {
+    text-align: center;
+    max-width: 820px;
+    margin: 0 auto;
+    animation: fade-up 0.9s ease both;
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(124,58,237,0.15);
+    border: 1px solid rgba(167,139,250,0.3);
+    border-radius: 100px;
+    padding: 0.4rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--violet-glow);
+    margin-bottom: 1.8rem;
+    animation: fade-up 0.9s 0.1s ease both;
+  }
+
+  .badge-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+    animation: blink 2s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  .hero-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: clamp(3.5rem, 9vw, 7rem);
+    letter-spacing: 0.06em;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(160deg, #fff 0%, var(--violet-glow) 40%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 30px rgba(167,139,250,0.5));
+    animation: fade-up 0.9s 0.2s ease both;
+  }
+
+  .hero-sub-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 400;
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    letter-spacing: 0.3em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 1.8rem;
+    animation: fade-up 0.9s 0.3s ease both;
+  }
+
+  .hero-desc {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    max-width: 580px;
+    margin: 0 auto 2.8rem;
+    line-height: 1.8;
+    animation: fade-up 0.9s 0.4s ease both;
+  }
+
+  .hero-desc span { color: var(--accent); font-weight: 500; }
+
+  .hero-btns {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    animation: fade-up 0.9s 0.5s ease both;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: linear-gradient(135deg, var(--violet) 0%, var(--accent2) 100%);
+    color: #fff;
+    padding: 0.85rem 2rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    box-shadow: 0 0 30px rgba(139,92,246,0.5), 0 4px 20px rgba(0,0,0,0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 0 50px rgba(139,92,246,0.7), 0 8px 30px rgba(0,0,0,0.4); }
+  .btn-primary:hover::before { opacity: 1; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: rgba(124,58,237,0.1);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.85rem 2rem;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+  }
+
+  .btn-secondary:hover { background: rgba(124,58,237,0.2); border-color: var(--violet-bright); transform: translateY(-2px); }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    padding: 3.5rem 0;
+    border-top: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(14, 10, 30, 0.5);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(255,255,255,0.03);
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+    text-align: center;
+  }
+
+  .stat-item {
+    animation: fade-up 0.7s ease both;
+  }
+
+  .stat-num {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 2.4rem;
+    background: linear-gradient(135deg, var(--violet-glow), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: block;
+    line-height: 1.1;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+    display: block;
+  }
+
+  /* ── FEATURES ── */
+  #features {
+    padding: 100px 0;
+  }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+
+  .section-eyebrow {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--violet-glow);
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .section-title span {
+    background: linear-gradient(135deg, var(--violet-glow), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .section-desc {
+    color: var(--text-muted);
+    margin: 1rem auto 0;
+    max-width: 520px;
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .feature-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+    cursor: none;
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.3);
+  }
+
+  .feature-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  }
+
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(167,139,250,0.07), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .feature-card:hover { border-color: rgba(167,139,250,0.35); transform: translateY(-6px); box-shadow: 0 24px 60px rgba(124,58,237,0.22), inset 0 1px 0 rgba(255,255,255,0.1); }
+  .feature-card:hover::before { opacity: 1; }
+
+  .feature-card.large {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  .feature-icon {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    background: rgba(124,58,237,0.15);
+    border: 1px solid rgba(124,58,237,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1.2rem;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+
+  .feature-card:hover .feature-icon {
+    background: rgba(124,58,237,0.25);
+    box-shadow: 0 0 20px rgba(124,58,237,0.3);
+  }
+
+  .feature-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    color: var(--text);
+    margin-bottom: 0.7rem;
+  }
+
+  .feature-desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.75;
+  }
+
+  .feature-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.2rem;
+  }
+
+  .tag {
+    background: rgba(124,58,237,0.12);
+    border: 1px solid rgba(124,58,237,0.25);
+    color: var(--violet-glow);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.25rem 0.7rem;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* ── COMMANDS ── */
+  #commands {
+    padding: 100px 0;
+    background: linear-gradient(180deg, transparent, rgba(18,15,36,0.5), transparent);
+  }
+
+  .commands-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 4rem;
+    align-items: center;
+  }
+
+  .commands-left .section-header { text-align: left; }
+
+  .command-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .command-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    background: rgba(14, 9, 32, 0.6);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    transition: border-color 0.2s, background 0.2s, transform 0.2s;
+    cursor: none;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .command-item:hover { border-color: rgba(167,139,250,0.3); background: rgba(124,58,237,0.1); transform: translateX(4px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), -4px 0 20px rgba(124,58,237,0.15); }
+
+  .command-name {
+    font-family: 'Orbitron', monospace;
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: var(--accent);
+    min-width: 140px;
+  }
+
+  .command-desc {
+    font-size: 0.83rem;
+    color: var(--text-muted);
+  }
+
+  .command-badge {
+    margin-left: auto;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+
+  .badge-security { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+  .badge-mod { background: rgba(234,179,8,0.12); color: #fde047; border: 1px solid rgba(234,179,8,0.25); }
+  .badge-music { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.25); }
+  .badge-util { background: rgba(139,92,246,0.15); color: var(--violet-glow); border: 1px solid rgba(139,92,246,0.25); }
+
+  .terminal {
+    background: rgba(8, 5, 18, 0.75);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 40px rgba(124,58,237,0.15),
+                inset 0 1px 0 rgba(255,255,255,0.08);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+  }
+
+  .terminal-bar {
+    background: rgba(20, 12, 42, 0.85);
+    padding: 0.9rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .t-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .t-dot.r { background: #ff5f57; }
+  .t-dot.y { background: #ffbd2e; }
+  .t-dot.g { background: #28ca41; }
+
+  .terminal-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-left: 0.5rem;
+  }
+
+  .terminal-body {
+    padding: 1.5rem 1.5rem;
+    font-family: 'Sora', monospace;
+    font-size: 0.82rem;
+    line-height: 2;
+  }
+
+  .t-line { display: flex; gap: 0.7rem; align-items: flex-start; }
+  .t-prompt { color: var(--violet); font-weight: 700; user-select: none; }
+  .t-cmd { color: var(--accent2); }
+  .t-out { color: var(--text-muted); padding-left: 1.2rem; }
+  .t-success { color: #4ade80; padding-left: 1.2rem; }
+  .t-warn    { color: #facc15; padding-left: 1.2rem; }
+  .t-divider { border: none; border-top: 1px solid rgba(124,58,237,0.15); margin: 0.6rem 0; }
+
+  .t-cursor {
+    display: inline-block;
+    width: 8px; height: 1em;
+    background: var(--accent);
+    vertical-align: middle;
+    animation: cursor-blink 1.1s step-end infinite;
+  }
+
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  /* ── HOW IT WORKS ── */
+  #how {
+    padding: 100px 0;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: 3.5rem;
+    position: relative;
+  }
+
+  .steps-grid::before {
+    content: '';
+    position: absolute;
+    top: 38px;
+    left: calc(16.67% + 1rem);
+    right: calc(16.67% + 1rem);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--violet), var(--accent2), var(--violet), transparent);
+    opacity: 0.5;
+  }
+
+  .step-card {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.25);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .step-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.13), transparent);
+  }
+
+  .step-card:hover { transform: translateY(-6px); box-shadow: var(--glow), inset 0 1px 0 rgba(255,255,255,0.1); border-color: rgba(167,139,250,0.3); }
+
+  .step-num {
+    width: 76px; height: 76px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--violet), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.4rem;
+    color: #fff;
+    box-shadow: 0 0 30px rgba(124,58,237,0.5);
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+  }
+
+  .step-desc {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.75;
+  }
+
+  /* ── CTA ── */
+  #cta {
+    padding: 100px 0;
+  }
+
+  .cta-box {
+    background: linear-gradient(135deg, rgba(60, 20, 120, 0.35), rgba(100,40,180,0.15));
+    border: 1px solid var(--glass-border);
+    border-radius: 28px;
+    padding: 5rem 3rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(30px) saturate(160%);
+    -webkit-backdrop-filter: blur(30px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1),
+                inset 0 -1px 0 rgba(255,255,255,0.04),
+                0 40px 100px rgba(0,0,0,0.4),
+                0 0 60px rgba(124,58,237,0.12);
+  }
+
+  .cta-box::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  }
+
+  .cta-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .cta-desc {
+    color: var(--text-muted);
+    max-width: 480px;
+    margin: 0 auto 2.5rem;
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: rgba(7, 5, 16, 0.7);
+    border-top: 1px solid var(--glass-border);
+    padding: 3rem 0;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .footer-logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.3rem;
+    letter-spacing: 0.12em;
+    background: linear-gradient(135deg, var(--violet-glow), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .footer-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--accent); }
+
+  .footer-copy {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  /* ── SCROLL ANIMATIONS ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .feature-card.large { grid-column: span 1; grid-template-columns: 1fr; }
+    .commands-layout { grid-template-columns: 1fr; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .steps-grid::before { display: none; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .nav-links { display: none; }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .hero-btns { flex-direction: column; align-items: center; }
+    .footer-inner { flex-direction: column; text-align: center; }
+    .footer-links { flex-wrap: wrap; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- CUSTOM CURSOR -->
+<div id="cursor-glow"></div>
+<div id="cursor-ring"></div>
+<div id="cursor-dot"></div>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="#">VELYX</a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#commands">Commands</a></li>
+      <li><a href="#how">Setup</a></li>
+      <li><a href="https://discord.com/oauth2/authorize?client_id=1482661961299661001" class="nav-cta">Invite Bot</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Online & Operational
+      </div>
+      <h1 class="hero-title">VELYX</h1>
+      <p class="hero-sub-title">Advanced Discord Protection System</p>
+      <p class="hero-desc">
+        The last line of defense for your server. <span>Anti-Nuke protection</span>, smart moderation, music playback, and powerful utilities — all in one bot.
+      </p>
+      <div class="hero-btns">
+        <a href="https://discord.com/oauth2/authorize?client_id=1482661961299661001" class="btn-primary">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Invite to Server
+        </a>
+        <a href="https://discord.gg/VuDxuh63xm" class="btn-secondary">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Support Server
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item reveal">
+        <span class="stat-num" data-count="15000">0</span>
+        <span class="stat-label">Servers Protected</span>
+      </div>
+      <div class="stat-item reveal">
+        <span class="stat-num" data-count="1200000">0</span>
+        <span class="stat-label">Users Guarded</span>
+      </div>
+      <div class="stat-item reveal">
+        <span class="stat-num" data-count="250">0</span>
+        <span class="stat-label">Commands Available</span>
+      </div>
+      <div class="stat-item reveal">
+        <span class="stat-num" data-count="99">0</span>
+        <span class="stat-label">% Uptime</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-eyebrow">What VELYX Does</span>
+      <h2 class="section-title">Built for <span>total control</span></h2>
+      <p class="section-desc">From server security to entertainment, VELYX covers every angle your community needs.</p>
+    </div>
+
+    <div class="features-grid">
+
+      <!-- Anti-Nuke -->
+      <div class="feature-card large reveal">
+        <div>
+          <div class="feature-icon">🛡️</div>
+          <h3 class="feature-title">Anti-Nuke Protection</h3>
+          <p class="feature-desc">Real-time monitoring against mass bans, channel deletions, role changes, and webhook abuse. VELYX detects malicious patterns instantly and locks down your server before damage spreads.</p>
+          <div class="feature-tags">
+            <span class="tag">Mass-Ban Detection</span>
+            <span class="tag">Channel Guard</span>
+            <span class="tag">Role Lock</span>
+            <span class="tag">Webhook Shield</span>
+          </div>
+        </div>
+        <div>
+          <div class="feature-icon">⚡</div>
+          <h3 class="feature-title">Instant Threat Response</h3>
+          <p class="feature-desc">Automated lockdown sequences trigger in milliseconds. Whitelists, permission snapshots, and detailed audit logs keep your admins informed and in control at all times.</p>
+          <div class="feature-tags">
+            <span class="tag">Auto-Lockdown</span>
+            <span class="tag">Whitelist System</span>
+            <span class="tag">Audit Logs</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Moderation -->
+      <div class="feature-card reveal">
+        <div class="feature-icon">⚖️</div>
+        <h3 class="feature-title">Smart Moderation</h3>
+        <p class="feature-desc">Automated warnings, mutes, bans, and kick systems with escalating punishments. Keep your community clean with AI-powered filter rules and raid detection.</p>
+        <div class="feature-tags">
+          <span class="tag">Auto-Mod</span>
+          <span class="tag">Raid Shield</span>
+          <span class="tag">Warn System</span>
+        </div>
+      </div>
+
+      <!-- Music -->
+      <div class="feature-card reveal">
+        <div class="feature-icon">🎵</div>
+        <h3 class="feature-title">High-Quality Music</h3>
+        <p class="feature-desc">Crystal-clear audio playback from YouTube, Spotify, and SoundCloud. Queue management, shuffle, loop, lyrics, and DJ role controls built right in.</p>
+        <div class="feature-tags">
+          <span class="tag">Spotify</span>
+          <span class="tag">YouTube</span>
+          <span class="tag">Queue System</span>
+        </div>
+      </div>
+
+      <!-- Utility -->
+      <div class="feature-card reveal">
+        <div class="feature-icon">🔧</div>
+        <h3 class="feature-title">Utility & Fun</h3>
+        <p class="feature-desc">Polls, giveaways, server info, user stats, custom embeds, role menus, ticket systems, and games. Everything your server needs — all in one place.</p>
+        <div class="feature-tags">
+          <span class="tag">Giveaways</span>
+          <span class="tag">Tickets</span>
+          <span class="tag">Role Menus</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- COMMANDS -->
+<section id="commands">
+  <div class="container">
+    <div class="commands-layout">
+      <div class="commands-left">
+        <div class="section-header reveal">
+          <span class="section-eyebrow">Command Overview</span>
+          <h2 class="section-title">Powerful<br><span>slash commands</span></h2>
+          <p class="section-desc">Clean, intuitive slash commands for every scenario. No prefix confusion — just type and execute.</p>
+        </div>
+        <div class="command-list reveal">
+          <div class="command-item">
+            <span class="command-name">/antinuke config</span>
+            <span class="command-desc">Configure protection layers</span>
+            <span class="command-badge badge-security">Security</span>
+          </div>
+          <div class="command-item">
+            <span class="command-name">/lockall</span>
+            <span class="command-desc">Instantly lock all channels</span>
+            <span class="command-badge badge-security">Security</span>
+          </div>
+          <div class="command-item">
+            <span class="command-name">/ban &lt;user&gt;</span>
+            <span class="command-desc">Permanent server ban</span>
+            <span class="command-badge badge-mod">Mod</span>
+          </div>
+          <div class="command-item">
+            <span class="command-name">/warn &lt;user&gt;</span>
+            <span class="command-desc">Issue a formal warning</span>
+            <span class="command-badge badge-mod">Mod</span>
+          </div>
+          <div class="command-item">
+            <span class="command-name">/play &lt;song&gt;</span>
+            <span class="command-desc">Play music from any source</span>
+            <span class="command-badge badge-music">Music</span>
+          </div>
+          <div class="command-item">
+            <span class="command-name">/giveaway start</span>
+            <span class="command-desc">Launch a giveaway</span>
+            <span class="command-badge badge-util">Utility</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="terminal reveal">
+        <div class="terminal-bar">
+          <span class="t-dot r"></span>
+          <span class="t-dot y"></span>
+          <span class="t-dot g"></span>
+          <span class="terminal-title">VELYX CONSOLE v2.0</span>
+        </div>
+        <div class="terminal-body">
+          <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">/antinuke setup --level max</span></div>
+          <div class="t-success">✓ Anti-nuke activated on all modules</div>
+          <div class="t-success">✓ Whitelist snapshot saved</div>
+          <hr class="t-divider">
+          <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">/antinuke status</span></div>
+          <div class="t-out">⬡ Mass-Ban Guard  — <span style="color:#4ade80">ACTIVE</span></div>
+          <div class="t-out">⬡ Channel Guard   — <span style="color:#4ade80">ACTIVE</span></div>
+          <div class="t-out">⬡ Role Lock       — <span style="color:#4ade80">ACTIVE</span></div>
+          <div class="t-out">⬡ Webhook Shield  — <span style="color:#4ade80">ACTIVE</span></div>
+          <hr class="t-divider">
+          <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">/lockdown trigger</span></div>
+          <div class="t-warn">⚠ Threat detected: mass-ban attempt</div>
+          <div class="t-success">✓ Server locked down in 83ms</div>
+          <div class="t-success">✓ Offender removed &amp; logged</div>
+          <hr class="t-divider">
+          <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"><span class="t-cursor"></span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-eyebrow">Quick Setup</span>
+      <h2 class="section-title">Up and running in <span>3 steps</span></h2>
+      <p class="section-desc">No complicated setup. VELYX is ready to protect your server in under two minutes.</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card reveal">
+        <div class="step-num">01</div>
+        <h3 class="step-title">Invite VELYX</h3>
+        <p class="step-desc">Click the invite link and authorize VELYX with the required permissions. Supports all server sizes.</p>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-num">02</div>
+        <h3 class="step-title">Run -Help</h3>
+        <p class="step-desc">Use the interactive setup wizard to configure your protection level, moderation rules, and preferences.</p>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-num">03</div>
+        <h3 class="step-title">Sit Back</h3>
+        <p class="step-desc">VELYX silently monitors your server 24/7. Get instant alerts whenever a threat is neutralized.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="container">
+    <div class="cta-box reveal">
+      <h2 class="cta-title">Ready to Secure<br>Your Server?</h2>
+      <p class="cta-desc">Join thousands of communities trusting VELYX to keep their servers safe, moderated, and thriving.</p>
+      <div class="hero-btns">
+        <a href="#" class="btn-primary">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Invite VELYX Free
+        </a>
+        <a href="#" class="btn-secondary">
+          Join Support Server
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <span class="footer-logo">VELYX</span>
+    <ul class="footer-links">
+      <li><a href="https://discord.com/oauth2/authorize?client_id=1482661961299661001">Invite</a></li>
+      <li><a href="https://discord.gg/VuDxuh63xm">Support</a></li>
+      <li><a href="#">Commands</a></li>
+      <li><a href="#">Terms</a></li>
+      <li><a href="#">Privacy</a></li>
+    </ul>
+    <span class="footer-copy">© 2025 VELYX. All rights reserved.</span>
+  </div>
+</footer>
+
+<script>
+// ── PARTICLE CANVAS ──
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+
+function randBetween(a, b) { return a + Math.random() * (b - a); }
+
+function initParticles(n = 110) {
+  particles = [];
+  for (let i = 0; i < n; i++) {
+    particles.push({
+      x: randBetween(0, W),
+      y: randBetween(0, H),
+      r: randBetween(0.5, 2),
+      vx: randBetween(-0.15, 0.15),
+      vy: randBetween(-0.2, -0.05),
+      alpha: randBetween(0.2, 0.9),
+      color: Math.random() > 0.5 ? '#a78bfa' : '#e879f9'
+    });
+  }
+}
+
+function drawParticles() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw faint grid
+  ctx.strokeStyle = 'rgba(124,58,237,0.05)';
+  ctx.lineWidth = 1;
+  const gs = 80;
+  for (let x = 0; x < W; x += gs) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gs) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Draw connections
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 120) {
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(139,92,246,${0.12 * (1 - dist / 120)})`;
+        ctx.lineWidth = 0.5;
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Draw particles
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.alpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.y < -5) { p.y = H + 5; p.x = randBetween(0, W); }
+    if (p.x < 0 || p.x > W) p.vx *= -1;
+  });
+
+  requestAnimationFrame(drawParticles);
+}
+
+resize();
+initParticles();
+drawParticles();
+window.addEventListener('resize', () => { resize(); initParticles(); });
+
+// ── SCROLL REVEAL ──
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+reveals.forEach(el => observer.observe(el));
+
+// ── COUNT UP ANIMATION ──
+function formatNum(n, max) {
+  if (max >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (max >= 1000)    return (n / 1000).toFixed(0) + 'K+';
+  return n + (max === 99 ? '%' : '+');
+}
+
+const counters = document.querySelectorAll('[data-count]');
+const countObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const el = entry.target;
+    const target = +el.dataset.count;
+    const duration = 1600;
+    const start = performance.now();
+    (function update(now) {
+      const t = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      el.textContent = formatNum(Math.round(ease * target), target);
+      if (t < 1) requestAnimationFrame(update);
+    })(performance.now());
+    countObserver.unobserve(el);
+  });
+}, { threshold: 0.5 });
+counters.forEach(el => countObserver.observe(el));
+
+// ── CUSTOM CURSOR ──
+const dot   = document.getElementById('cursor-dot');
+const ring  = document.getElementById('cursor-ring');
+const glow  = document.getElementById('cursor-glow');
+
+let mx = -200, my = -200;
+let rx = -200, ry = -200;
+let glowX = -200, glowY = -200;
+let hovering = false;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX;
+  my = e.clientY;
+});
+
+document.addEventListener('mouseleave', () => {
+  dot.style.opacity  = '0';
+  ring.style.opacity = '0';
+  glow.style.opacity = '0';
+});
+
+document.addEventListener('mouseenter', () => {
+  dot.style.opacity  = '1';
+  ring.style.opacity = '1';
+  glow.style.opacity = '1';
+});
+
+// Hover effect on interactive elements
+const interactives = document.querySelectorAll('a, button, .feature-card, .step-card, .command-item, .nav-cta');
+interactives.forEach(el => {
+  el.addEventListener('mouseenter', () => { hovering = true; document.body.classList.add('cursor-hover'); });
+  el.addEventListener('mouseleave', () => { hovering = false; document.body.classList.remove('cursor-hover'); });
+});
+
+// Smooth ring + glow follow with lerp
+function lerpCursor() {
+  // Ring lags behind — smooth follow
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) * 0.12;
+  glowX += (mx - glowX) * 0.07;
+  glowY += (my - glowY) * 0.07;
+
+  // Dot snaps instantly
+  dot.style.left  = mx + 'px';
+  dot.style.top   = my + 'px';
+
+  ring.style.left = rx + 'px';
+  ring.style.top  = ry + 'px';
+
+  glow.style.left = glowX + 'px';
+  glow.style.top  = glowY + 'px';
+
+  requestAnimationFrame(lerpCursor);
+}
+lerpCursor();
+
+// Click ripple burst
+document.addEventListener('click', e => {
+  const burst = document.createElement('div');
+  burst.style.cssText = `
+    position: fixed;
+    left: ${e.clientX}px;
+    top: ${e.clientY}px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.7);
+    transform: translate(-50%,-50%) scale(1);
+    pointer-events: none;
+    z-index: 9996;
+    animation: cursor-burst 0.55s ease-out forwards;
+  `;
+  document.body.appendChild(burst);
+  setTimeout(() => burst.remove(), 600);
+});
+
+// Inject burst keyframes
+const burstStyle = document.createElement('style');
+burstStyle.textContent = `
+  @keyframes cursor-burst {
+    0%   { width: 6px; height: 6px; opacity: 1; }
+    100% { width: 80px; height: 80px; opacity: 0; border-color: rgba(167,139,250,0.4); }
+  }
+`;
+document.head.appendChild(burstStyle);
+
+// ── NAV SCROLL EFFECT ──
+window.addEventListener('scroll', () => {
+  document.querySelector('nav').style.background =
+    window.scrollY > 60 ? 'rgba(7,6,15,0.82)' : 'rgba(10,7,22,0.55)';
+});
+</script>
+</body>
+</html>
